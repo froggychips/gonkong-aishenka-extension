@@ -1,6 +1,7 @@
 (() => {
   const EXTENSION_CLASS = "aishenka-extension";
   const DEFAULT_MODEL = "gemini-2.5-flash";
+  const DATASET_SCHEMA = "gonkong-aishenka.v2";
   const STORAGE_KEYS = {
     apiKey: "aishenkaGeminiApiKey",
     model: "aishenkaGeminiModel",
@@ -41,9 +42,16 @@
 
   function htmlToText(html) {
     if (!html) return "";
+    if (typeof html === "object") return bodyToText(html);
     const template = document.createElement("template");
     template.innerHTML = String(html);
     return (template.content.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function mediaLabel(item) {
+    const url = item?.url || item?.src || item?.href || "";
+    const caption = item?.caption || item?.alt || item?.title || "";
+    return [caption, url].filter(Boolean).join(" ");
   }
 
   function valueText(value) {
@@ -52,8 +60,14 @@
     if (typeof value === "number" || typeof value === "boolean") return String(value);
     if (Array.isArray(value)) return value.map(valueText).filter(Boolean).join("\n");
     if (typeof value === "object") {
+      if (value.text) return htmlToText(value.text);
+      if (value.caption) return htmlToText(value.caption);
+      if (value.url || value.src || value.href) return mediaLabel(value);
+      if (Array.isArray(value.images)) return value.images.map(mediaLabel).filter(Boolean).join("\n");
+      if (Array.isArray(value.files)) return value.files.map(mediaLabel).filter(Boolean).join("\n");
+      if (Array.isArray(value.items)) return value.items.map(valueText).filter(Boolean).join("\n");
       return Object.entries(value)
-        .filter(([key]) => !["id", "type", "attrs", "data"].includes(key))
+        .filter(([key]) => !["id", "type", "attrs", "tunes"].includes(key))
         .map(([, item]) => valueText(item))
         .filter(Boolean)
         .join("\n");
@@ -63,11 +77,28 @@
 
   function blocksToText(blocks) {
     if (!Array.isArray(blocks)) return "";
-    return blocks.map(valueText).filter(Boolean).join("\n").trim();
+    return blocks
+      .map((block) => {
+        if (!block) return "";
+        if (block.type && block.data) return valueText(block.data);
+        return valueText(block);
+      })
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+
+  function bodyToText(body) {
+    if (!body) return "";
+    if (typeof body === "string") return htmlToText(body);
+    if (Array.isArray(body)) return blocksToText(body);
+    if (Array.isArray(body.blocks)) return blocksToText(body.blocks);
+    return valueText(body);
   }
 
   function firstDate(item) {
     return (
+      item.date ||
       item.created_at ||
       item.createdAt ||
       item.published_at ||
@@ -79,8 +110,8 @@
   }
 
   function normalizePost(post) {
-    const bodyText = htmlToText(post.body || post.text || post.content || "");
-    const blocksText = blocksToText(post.blocks);
+    const bodyText = bodyToText(post.body || post.text || post.content || "");
+    const blocksText = blocksToText(post.blocks || post.body?.blocks);
     return {
       id: post.id,
       title: post.title || post.name || "",
@@ -89,8 +120,8 @@
       body_text: bodyText || blocksText,
       blocks_text: blocksText,
       created_at: firstDate(post),
-      rating: post.rating ?? post.score ?? null,
-      comments_count: post.comments_count ?? post.commentsCount ?? null,
+      rating: post.rating ?? post.rate ?? post.score ?? null,
+      comments_count: post.comments_count ?? post.commentsCount ?? post.comments?.count ?? null,
       channel: post.channel
         ? {
             id: post.channel.id,
@@ -109,12 +140,12 @@
     return {
       id: comment.id,
       post_id: comment.post_id ?? comment.postId ?? post?.id ?? null,
-      parent_id: comment.parent_id ?? comment.parentId ?? null,
+      parent_id: comment.parent_id ?? comment.parentId ?? comment.parent_comment_id ?? null,
       url: comment.url || "",
       body_html: comment.body || "",
-      body_text: htmlToText(comment.body || comment.text || comment.content || ""),
+      body_text: bodyToText(comment.body || comment.text || comment.content || ""),
       created_at: firstDate(comment),
-      rating: comment.rating ?? comment.score ?? null,
+      rating: comment.rating ?? comment.rate ?? comment.score ?? null,
       post
     };
   }
@@ -314,7 +345,7 @@
     const recentPosts = posts.filter((post) => inLastHours(post, 72));
     const recentComments = comments.filter((comment) => inLastHours(comment, 72));
     return {
-      schema: "gonkong-aishenka.v1",
+      schema: DATASET_SCHEMA,
       generated_at: new Date().toISOString(),
       cache: cacheInfo,
       source: {
@@ -446,7 +477,7 @@ ${JSON.stringify(compactForGemini(dataset), null, 2)}`;
     const key = cacheKey(profile);
     const cached = await chrome.storage.local.get([key]);
     const dataset = cached[key];
-    if (!dataset || dataset.schema !== "gonkong-aishenka.v1") return null;
+    if (!dataset || dataset.schema !== DATASET_SCHEMA) return null;
     if (!Array.isArray(dataset.posts) || !Array.isArray(dataset.comments)) return null;
     return dataset;
   }
