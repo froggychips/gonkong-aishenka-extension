@@ -1,0 +1,219 @@
+.aishenka-extension {
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.aishenka-tab {
+  appearance: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px 12px;
+  align-self: stretch;
+}
+
+.aishenka-tab:hover,
+.aishenka-tab-active {
+  border-bottom-color: currentColor;
+}
+
+.aishenka-panel {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(120, 120, 120, 0.28);
+  border-radius: 8px;
+  background: color-mix(in srgb, Canvas 92%, #48a868 8%);
+  color: CanvasText;
+}
+
+.aishenka-panel[hidden] {
+  display: none !important;
+}
+
+.aishenka-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.aishenka-panel h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.aishenka-panel p {
+  max-width: 760px;
+  margin: 0;
+  opacity: 0.78;
+  line-height: 1.45;
+}
+
+.aishenka-target {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.72;
+}
+
+.aishenka-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, 240px) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.aishenka-field {
+  display: grid;
+  gap: 5px;
+}
+
+.aishenka-field span {
+  font-size: 12px;
+  opacity: 0.72;
+}
+
+.aishenka-field input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(120, 120, 120, 0.34);
+  border-radius: 6px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  padding: 7px 9px;
+}
+
+.aishenka-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.aishenka-panel button {
+  min-height: 36px;
+  border: 1px solid rgba(120, 120, 120, 0.35);
+  border-radius: 6px;
+  background: Canvas;
+  color: CanvasText;
+  cursor: pointer;
+  font: inherit;
+  padding: 7px 10px;
+}
+
+.aishenka-panel button:hover {
+  filter: brightness(0.97);
+}
+
+.aishenka-panel button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.aishenka-primary {
+  background: #207a43 !important;
+  border-color: #207a43 !important;
+  color: #fff !important;
+}
+
+.aishenka-ghost {
+  flex: 0 0 auto;
+}
+
+.aishenka-status {
+  min-height: 24px;
+  margin: 8px 0 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.aishenka-status[data-tone="ok"] {
+  color: #1c7a3d;
+}
+
+.aishenka-status[data-tone="error"] {
+  color: #b12828;
+}
+
+.aishenka-progress {
+  display: grid;
+  gap: 10px;
+}
+
+.aishenka-progress-row {
+  display: grid;
+  gap: 5px;
+}
+
+.aishenka-progress-head,
+.aishenka-progress-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  opacity: 0.78;
+}
+
+.aishenka-progress-track {
+  overflow: hidden;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(120, 120, 120, 0.2);
+}
+
+.aishenka-progress-fill {
+  min-width: 8px;
+  height: 100%;
+  border-radius: inherit;
+  background: #207a43;
+  transition: width 180ms ease;
+}
+
+.aishenka-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.aishenka-summary > div {
+  border: 1px solid rgba(120, 120, 120, 0.22);
+  border-radius: 6px;
+  background: color-mix(in srgb, Canvas 88%, #ffffff 12%);
+  padding: 10px;
+  line-height: 1.35;
+}
+
+.aishenka-result {
+  max-height: 520px;
+  overflow: auto;
+  margin: 14px 0 0;
+  border: 1px solid rgba(120, 120, 120, 0.24);
+  border-radius: 6px;
+  background: Canvas;
+  color: CanvasText;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 12px;
+}
+
+@media (max-width: 760px) {
+  .aishenka-panel {
+    padding: 12px;
+  }
+
+  .aishenka-panel-head,
+  .aishenka-actions {
+    display: grid;
+  }
+
+  .aishenka-grid,
+  .aishenka-summary {
+    grid-template-columns: 1fr;
+  }
+}
