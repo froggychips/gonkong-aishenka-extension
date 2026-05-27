@@ -374,21 +374,44 @@
   }
 
   function compactForGemini(dataset) {
-    const maxPosts = 120;
-    const maxComments = 220;
-    const trim = (text, size = 900) =>
-      String(text || "").length > size ? `${String(text).slice(0, size)}...` : String(text || "");
+    const maxRecentPosts = 24;
+    const maxRecentComments = 48;
+    const maxSamplePosts = 10;
+    const maxSampleComments = 24;
+    const cleanText = (text) => {
+      const value = String(text || "")
+        .replace(/\[object Object\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      return value;
+    };
+    const trim = (text, size = 260) => {
+      const value = cleanText(text);
+      return value.length > size ? `${value.slice(0, size)}...` : value;
+    };
+    const isUseful = (text) => trim(text, 80).length > 0;
+    const channelStats = (items) => {
+      const counts = new Map();
+      for (const item of items) {
+        const channel = item.channel?.title || item.post?.channel?.title || "без подсайта";
+        counts.set(channel, (counts.get(channel) || 0) + 1);
+      }
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12)
+        .map(([channel, count]) => ({ channel, count }));
+    };
     const commentShape = (comment) => ({
       id: comment.id,
       post_id: comment.post_id,
       created_at: comment.created_at,
       rating: comment.rating,
-      text: trim(comment.body_text),
+      text: trim(comment.body_text, 260),
       commented_post: comment.post
         ? {
             id: comment.post.id,
             title: comment.post.title,
-            text: trim(comment.post.body_text || comment.post.blocks_text, 700),
+            text: trim(comment.post.body_text || comment.post.blocks_text, 160),
             channel: comment.post.channel?.title || ""
           }
         : null
@@ -400,38 +423,59 @@
       rating: post.rating,
       comments_count: post.comments_count,
       channel: post.channel?.title || "",
-      text: trim(post.body_text || post.blocks_text)
+      text: trim(post.body_text || post.blocks_text, 260)
     });
+
+    const recentPosts = dataset.recent_72h.posts.filter((post) =>
+      isUseful(`${post.title} ${post.body_text || post.blocks_text}`)
+    );
+    const recentComments = dataset.recent_72h.comments.filter((comment) =>
+      isUseful(comment.body_text)
+    );
+    const samplePosts = dataset.posts.filter((post) =>
+      isUseful(`${post.title} ${post.body_text || post.blocks_text}`)
+    );
+    const sampleComments = dataset.comments.filter((comment) => isUseful(comment.body_text));
+    const hasRecent = recentPosts.length > 0 || recentComments.length > 0;
 
     return {
       user: dataset.user,
       generated_at: dataset.generated_at,
       counts: dataset.counts,
+      selection_note: hasRecent
+        ? "Recent activity is present, so all_time_sample is intentionally small."
+        : "No recent_72h activity was detected, so use the all_time_sample as a behavioral sample.",
+      stats: {
+        post_channels_top: channelStats(dataset.posts),
+        comment_channels_top: channelStats(dataset.comments)
+      },
       recent_72h: {
         since: dataset.recent_72h.since,
-        posts: dataset.recent_72h.posts.slice(0, maxPosts).map(postShape),
-        comments: dataset.recent_72h.comments.slice(0, maxComments).map(commentShape)
+        posts: recentPosts.slice(0, maxRecentPosts).map(postShape),
+        comments: recentComments.slice(0, maxRecentComments).map(commentShape)
       },
       all_time_sample: {
-        newest_posts: dataset.posts.slice(0, 80).map(postShape),
-        newest_comments: dataset.comments.slice(0, 120).map(commentShape)
+        newest_posts: samplePosts.slice(0, hasRecent ? 5 : maxSamplePosts).map(postShape),
+        newest_comments: sampleComments
+          .slice(0, hasRecent ? 12 : maxSampleComments)
+          .map(commentShape)
       }
     };
   }
 
   function buildPrompt(dataset) {
-    return `Ты анализируешь публичную активность пользователя Gonkong. Данные ниже собраны из постов пользователя и его комментариев, включая посты, под которыми оставлены комментарии.
+    return `Проанализируй публичную активность пользователя Gonkong по компактной выборке ниже. Это гипотеза, не диагноз.
 
-Задача:
-1. Сделай психологический портрет как гипотезу, а не диагноз.
-2. Разбери поведенческие паттерны: темы, триггеры, манеру спора, юмор, повторяющиеся роли.
-3. Отдельно оцени последние 72 часа: что изменилось, какой настрой, куда тянет.
-4. Сделай короткое дерзкое саммари в стиле сайта с заголовком "Какой ты персонаж сегодня: ...". Стеб допустим, но без деанона, травли, призывов атаковать и без фактов, которых нет в JSON.
-5. В конце дай 5 тезисов, которые можно проверить вручную по исходным постам/комментариям.
+Верни Markdown на русском:
+1. психологический портрет;
+2. паттерны поведения: темы, триггеры, манера спора, юмор, повторяющиеся роли;
+3. последние 72 часа, если там есть данные; если данных нет, явно напиши, что свежей активности в выборке нет;
+4. дерзкое, но не травящее саммари с заголовком "Какой ты персонаж сегодня: ...";
+5. 5 проверяемых тезисов по данным.
 
-Верни Markdown на русском.
+Не пересказывай весь JSON и не выдумывай факты вне выборки.
 
-JSON:
+ДАННЫЕ:
 ${JSON.stringify(compactForGemini(dataset), null, 2)}`;
   }
 
